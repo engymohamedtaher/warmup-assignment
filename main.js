@@ -298,7 +298,7 @@ function getRequiredHoursPerMonth(textFile, rateFile, bonusCount, driverID, mont
 
       if (mon !== month) continue;
 
-      // Check if this date is the driver's day off
+      // Check if date is drivers day off
       const dateObj = new Date(year, mon - 1, day);
       const dayName = dayNames[dateObj.getDay()];
 
@@ -358,18 +358,14 @@ function getNetPay(driverID, actualHours, requiredHours, rateFile) {
   const actualSec = hmsToSeconds(actualHours);
   const requiredSec = hmsToSeconds(requiredHours);
 
-  // No deduction if actual >= required
   if (actualSec >= requiredSec) return basePay;
 
   const missingSec = requiredSec - actualSec;
 
-  // Subtract the allowed buffer
   const billableSec = missingSec - allowedSec;
 
-  // If within allowed buffer, no deduction
   if (billableSec <= 0) return basePay;
 
-  // Only full hours count
   const billableHours = Math.floor(billableSec / 3600);
 
   if (billableHours === 0) return basePay;
