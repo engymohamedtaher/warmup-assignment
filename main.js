@@ -39,43 +39,58 @@ function getShiftDuration(startTime, endTime) {
 // ============================================================
 function getIdleTime(startTime, endTime) {
     function toSeconds(timeStr) {
-    timeStr = timeStr.trim().toLowerCase();
-    const parts = timeStr.split(" ");
-    const period = parts[1];
-    const [h, m, s] = parts[0].split(":").map(Number);
+        timeStr = timeStr.trim().toLowerCase();
+        const parts = timeStr.split(" ");
+        const period = parts[1];
+        const [h, m, s] = parts[0].split(":").map(Number);
+        let hours = h;
+        if (period === "pm" && h !== 12) hours += 12;
+        if (period === "am" && h === 12) hours = 0;
+        return hours * 3600 + m * 60 + s;
+    }
 
-    let hours = h;
-    if (period === "pm" && h !== 12) hours += 12;
-    if (period === "am" && h === 12) hours = 0;
+    function secondsToHMS(totalSeconds) {
+        const h = Math.floor(totalSeconds / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+    }
 
-    return hours * 3600 + m * 60 + s;
-  }
+    let startSec = toSeconds(startTime);
+    let endSec = toSeconds(endTime);
+    const deliveryStart = 8 * 3600;   
+    const deliveryEnd = 22 * 3600;    
 
-  function secondsToHMS(totalSeconds) {
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
-    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-  }
+    if (endSec < startSec) {
+        const midnight = 24 * 3600;
+        let idleSec = 0;
 
-  const startSec = toSeconds(startTime);
-  const endSec = toSeconds(endTime);
-  const deliveryStart = 8 * 3600;   // 8:00 AM
-  const deliveryEnd = 22 * 3600;    // 10:00 PM
+        if (startSec < deliveryStart) {
+            idleSec += deliveryStart - startSec;
+        }
+        if (startSec < midnight && midnight > deliveryEnd) {
+            idleSec += midnight - Math.max(deliveryEnd, startSec);
+        }
 
-  let idleSec = 0;
+        if (endSec > 0) {
+            idleSec += Math.min(deliveryStart, endSec); 
+        }
+        if (endSec > deliveryEnd) {
+            idleSec += endSec - deliveryEnd;
+        }
 
-  // Time before 8 AM
-  if (startSec < deliveryStart) {
-    idleSec += Math.min(deliveryStart, endSec) - startSec;
-  }
+        return secondsToHMS(idleSec);
+    }
 
-  // Time after 10 PM
-  if (endSec > deliveryEnd) {
-    idleSec += endSec - Math.max(deliveryEnd, startSec);
-  }
+    let idleSec = 0;
+    if (startSec < deliveryStart) {
+        idleSec += Math.min(deliveryStart, endSec) - startSec;
+    }
+    if (endSec > deliveryEnd) {
+        idleSec += endSec - Math.max(deliveryEnd, startSec);
+    }
 
-  return secondsToHMS(idleSec);
+    return secondsToHMS(idleSec);
 }
 
 // ============================================================
@@ -160,9 +175,9 @@ function addShiftRecord(textFile, shiftObj) {
   }
 
   if (lastIndex === -1) {
-    lines.push(newRecord); // New driver, append at end
+    lines.push(newRecord); 
   } else {
-    lines.splice(lastIndex + 1, 0, newRecord); // Insert after last entry of that driver
+    lines.splice(lastIndex + 1, 0, newRecord);
   }
 
   fs.writeFileSync(textFile, lines.join("\n"));
